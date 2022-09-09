@@ -1,25 +1,27 @@
 const { bootstrap } = require("@kaholo/plugin-library");
+const { promisify } = require("util");
+const exec = promisify(require("child-process").exec);
 
-async function hello(params) {
+const CIRCLECI_DOCKER_IMAGE = "circleci/circleci-cli";
+
+async function executeJob(params) {
   const {
-    helloName,
-    saySecret,
-    secret,
+    workingDirectory,
+    jobName,
   } = params;
 
-  let greeting = `Hello ${helloName}!`;
+  const command = `\
+docker run --rm \
+-v /var/run/docker.sock:/var/run/docker.sock \
+-v ${workingDirectory}:/proj \
+-w /proj ${CIRCLECI_DOCKER_IMAGE} \
+sudo usermod -aG docker circleci; \
+circleci local execute --job ${jobName}\
+`;
 
-  if (saySecret && !secret) {
-    throw new Error("No secret was provided to say. Please provide a secret or uncheck \"Say Secret\".");
-  }
-
-  if (saySecret) {
-    greeting += `\nHere is the secret: ${secret}`;
-  }
-
-  return greeting;
+  return exec(command);
 }
 
 module.exports = bootstrap({
-  hello,
+  executeJob,
 });
