@@ -1,6 +1,6 @@
 {
   "name": "circleci-cli",
-  "viewName": "CircleCI Cli",
+  "viewName": "CircleCI CLI",
   "type": "executer",
   "main": "app.js",
   "execProgram": "node",
