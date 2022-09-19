@@ -23,16 +23,12 @@ async function executeJob(params) {
   await buildImage();
 
   const command = `circleci local execute --job ${jobName}`;
-  const workingDirVolumeDefinition = docker.createVolumeDefinition(absoluteWorkingDirectory);
-  const environmentVariables = {
-    [workingDirVolumeDefinition.mountPoint.name]: workingDirVolumeDefinition.mountPoint.value,
-    [workingDirVolumeDefinition.path.name]: workingDirVolumeDefinition.path.value,
-  };
+  const workingDirContainerPath = "/proj";
   const dockerCommand = docker.buildDockerCommand({
-    command: docker.sanitizeCommand(command),
+    command,
     image: DOCKER_IMAGE_NAME,
     user: "root",
-    workingDirectory: `$${workingDirVolumeDefinition.mountPoint.name}`,
+    workingDirectory: workingDirContainerPath,
     additionalArguments: [
       "--privileged",
       "-t",
@@ -40,17 +36,15 @@ async function executeJob(params) {
       "/var/run/docker.sock:/var/run/docker.sock:ro",
       "-v",
       "/tmp:/tmp:rw",
+      "-v",
+      `${absoluteWorkingDirectory}:${workingDirContainerPath}:rw`,
     ],
-    volumeDefinitionsArray: [workingDirVolumeDefinition],
-    environmentVariables,
   });
 
   let stdout;
   let stderr;
   try {
-    ({ stdout, stderr } = await exec(dockerCommand, {
-      env: environmentVariables,
-    }));
+    ({ stdout, stderr } = await exec(dockerCommand));
   } catch (error) {
     if (error.stderr) {
       throw new Error(error.stderr);
