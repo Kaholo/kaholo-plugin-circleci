@@ -1,10 +1,8 @@
-const childProcess = require("child_process");
+const pty = require("node-pty");
 const { promisify } = require("util");
 const { resolve } = require("path");
 
 const { pathExists } = require("./helpers");
-
-const exec = promisify(childProcess.exec);
 
 async function executeJob(params) {
   const {
@@ -17,29 +15,25 @@ async function executeJob(params) {
     throw new Error(`Path ${workingDirectory} does not exist on agent!`);
   }
 
-  const command = `circleci local execute --job ${jobName}`;
+  const command = "circleci";
+  const commandArgs = ["local", "execute", "--job", jobName];
 
-  let stdout;
-  let stderr;
+  const circleciProcess = pty.spawn(command, commandArgs, {
+    cwd: absoluteWorkingDirectory,
+  });
+
+  const dataChunks = [];
+  circleciProcess.onData((chunk) => {
+    dataChunks.push(String(chunk));
+  });
+
   try {
-    ({ stdout, stderr } = await exec(command, {
-      cwd: absoluteWorkingDirectory,
-    }));
+    await promisify(circleciProcess.onExit.bind(circleciProcess))();
   } catch (error) {
-    if (error.stderr) {
-      throw new Error(error.stderr);
-    } else if (error.stdout) {
-      throw new Error(error.stdout);
-    }
-    throw error;
+    console.error("Child process exit code:", error);
   }
 
-  if (!stdout && stderr) {
-    throw new Error(stderr);
-  } else if (stderr) {
-    console.error(stderr);
-  }
-  return stdout;
+  return dataChunks.join("");
 }
 
 module.exports = {
