@@ -30,9 +30,11 @@ async function executeJob(params) {
   try {
     await promisify(circleciProcess.onExit.bind(circleciProcess))();
   } catch (error) {
-    console.error("Child process error:", error);
-    console.error(dataChunks.join(""));
-    throw new Error("Execution failed");
+    if (error?.exitCode !== 0) {
+      console.error("Child process error:", error);
+      console.error(dataChunks.join(""));
+      throw new Error("Execution failed");
+    }
   }
 
   return dataChunks.join("");
